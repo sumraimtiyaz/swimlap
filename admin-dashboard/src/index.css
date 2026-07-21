@@ -1,0 +1,651 @@
+/*
+ * SwimLap Coordinator Console — visual system.
+ *
+ * Subject: a pool-deck operations console a meet coordinator glances at between
+ * heats. The design borrows the vernacular of a competition pool: deep-water
+ * teal, a pale wet-deck surface, and a lane-rope accent (the alternating floats
+ * on a lane divider) used as the one signature motif. All timing figures are set
+ * in a tabular monospace so numbers align and never jitter as laps stream in —
+ * a decision driven by what this app is, not decoration.
+ *
+ * Type: Chivo (display/UI) + Chivo Mono (numerics) when available, with a system
+ * fallback so the console still reads correctly offline.
+ */
+@import url("https://fonts.googleapis.com/css2?family=Chivo:wght@400;500;700;900&family=Chivo+Mono:wght@400;500;700&display=swap");
+
+:root {
+  /* Water + deck palette */
+  --ink: #0d2830;          /* wet-slate text */
+  --ink-soft: #4a6068;     /* secondary text */
+  --ink-faint: #8399a0;    /* captions, meta */
+  --deck: #e9edec;         /* page background — pale concrete deck */
+  --deck-line: #d3dad9;    /* hairlines on the deck */
+  --surface: #ffffff;      /* cards */
+  --surface-sunk: #f3f6f5; /* insets, table stripes */
+
+  --water: #0e7c86;        /* primary — competition aqua */
+  --water-deep: #0a5960;   /* pressed/hover */
+  --water-wash: #dceff0;   /* tinted fills, selected rows */
+
+  --rope: #e2503f;         /* lane-rope accent — live pulses, destructive */
+  --rope-deep: #c23a2b;
+  --rope-wash: #fbe4e0;
+
+  --amber: #b8791b;        /* warnings / flags */
+  --amber-wash: #f8ecd6;
+
+  /* State colors for heat/timer badges */
+  --scheduled: #5b7079;
+  --scheduled-wash: #e4e9ea;
+  --closed: #8a999e;
+  --closed-wash: #eceff0;
+
+  --radius: 10px;
+  --radius-sm: 7px;
+  --shadow: 0 1px 2px rgba(13, 40, 48, 0.06), 0 6px 18px rgba(13, 40, 48, 0.06);
+  --shadow-sm: 0 1px 2px rgba(13, 40, 48, 0.08);
+
+  --font-ui: "Chivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "Chivo Mono", ui-monospace, "SF Mono", "Cascadia Mono", Menlo, monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--deck);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* The lane-rope motif: alternating floats. Reused as a thin signature strip. */
+.lane-rope {
+  height: 4px;
+  border-radius: 2px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--rope) 0 14px,
+    #f4f4f2 14px 20px,
+    var(--water) 20px 34px,
+    #f4f4f2 34px 40px
+  );
+  opacity: 0.9;
+}
+
+/* ---- Buttons ------------------------------------------------------------- */
+button {
+  font-family: inherit;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease, opacity 120ms ease;
+  text-decoration: none;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--water);
+  color: #fff;
+}
+.btn-primary:not(:disabled):hover {
+  background: var(--water-deep);
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: var(--deck-line);
+  color: var(--ink);
+}
+.btn-ghost:not(:disabled):hover {
+  background: var(--surface-sunk);
+  border-color: var(--ink-faint);
+}
+
+.btn-danger {
+  background: var(--rope);
+  color: #fff;
+}
+.btn-danger:not(:disabled):hover {
+  background: var(--rope-deep);
+}
+
+.btn-sm {
+  padding: 6px 11px;
+  font-size: 13px;
+}
+
+/* ---- Forms --------------------------------------------------------------- */
+label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 6px;
+}
+
+input,
+select {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--deck-line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 14px;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+input:focus,
+select:focus {
+  outline: none;
+  border-color: var(--water);
+  box-shadow: 0 0 0 3px var(--water-wash);
+}
+
+.field {
+  margin-bottom: 14px;
+}
+
+.field-row {
+  display: flex;
+  gap: 12px;
+}
+.field-row > * {
+  flex: 1;
+}
+
+/* ---- Cards / surfaces ---------------------------------------------------- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--deck-line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.card-pad {
+  padding: 20px;
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Badges -------------------------------------------------------------- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: capitalize;
+}
+
+.badge-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.badge-scheduled {
+  background: var(--scheduled-wash);
+  color: var(--scheduled);
+}
+.badge-live {
+  background: var(--rope-wash);
+  color: var(--rope-deep);
+}
+.badge-closed {
+  background: var(--closed-wash);
+  color: var(--closed);
+}
+
+/* The live dot breathes, echoing a running pace clock. */
+.badge-live .badge-dot {
+  animation: pulse 1.4s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.72);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badge-live .badge-dot {
+    animation: none;
+  }
+}
+
+/* ---- Layout shell -------------------------------------------------------- */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--surface);
+  border-bottom: 1px solid var(--deck-line);
+}
+.app-header-inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  text-decoration: none;
+  color: var(--ink);
+}
+.brand-mark {
+  font-weight: 900;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+.brand-mark span {
+  color: var(--water);
+}
+.brand-sub {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.header-spacer {
+  flex: 1;
+}
+.header-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 28px 24px 64px;
+}
+
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- Heat list ----------------------------------------------------------- */
+.heat-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  border: 1px solid var(--deck-line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  text-decoration: none;
+  color: inherit;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+}
+.heat-row:hover {
+  border-color: var(--water);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+.heat-row-main {
+  flex: 1;
+  min-width: 0;
+}
+.heat-row-name {
+  font-weight: 700;
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.heat-row-meta {
+  font-size: 12.5px;
+  color: var(--ink-faint);
+  margin-top: 2px;
+}
+.heat-row-figure {
+  text-align: right;
+}
+.heat-row-figure .n {
+  font-size: 18px;
+  font-weight: 700;
+}
+.heat-row-figure .l {
+  display: block;
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* ---- Lane monitor (the signature) --------------------------------------- */
+.monitor {
+  overflow: hidden;
+}
+.monitor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+}
+.lane {
+  display: grid;
+  grid-template-columns: 46px 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 20px;
+  position: relative;
+}
+/* lane-rope divider between lanes */
+.lane + .lane::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 20px;
+  right: 20px;
+  height: 3px;
+  transform: translateY(-1.5px);
+  border-radius: 2px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--deck-line) 0 12px,
+    transparent 12px 18px
+  );
+}
+.lane-num {
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--water-wash);
+  color: var(--water-deep);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 18px;
+}
+.lane-num.done {
+  background: var(--water);
+  color: #fff;
+}
+.lane-body {
+  min-width: 0;
+}
+.lane-who {
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lane-who.unassigned {
+  color: var(--ink-faint);
+  font-style: italic;
+  font-weight: 400;
+}
+.lane-ticks {
+  display: flex;
+  gap: 4px;
+  margin-top: 7px;
+  flex-wrap: wrap;
+}
+.tick {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--water);
+}
+.tick.invalid {
+  background: var(--amber);
+}
+.tick.late {
+  background: var(--rope);
+}
+.tick.pending {
+  background: var(--deck-line);
+}
+.lane-count {
+  text-align: right;
+  font-family: var(--font-mono);
+}
+.lane-count .c {
+  font-size: 20px;
+  font-weight: 700;
+}
+.lane-count .t {
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+/* ---- Lap log table ------------------------------------------------------- */
+.log {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.log th {
+  text-align: left;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-weight: 700;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--deck-line);
+}
+.log td {
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--surface-sunk);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.log tr:hover td {
+  background: var(--surface-sunk);
+}
+.flag {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-ui);
+}
+.flag-late {
+  background: var(--rope-wash);
+  color: var(--rope-deep);
+}
+.flag-buffered {
+  background: var(--water-wash);
+  color: var(--water-deep);
+}
+.flag-invalid {
+  background: var(--amber-wash);
+  color: var(--amber);
+}
+.flag-ok {
+  color: var(--ink-faint);
+  font-family: var(--font-ui);
+}
+
+/* ---- Login --------------------------------------------------------------- */
+.auth-screen {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(1200px 500px at 50% -10%, var(--water-wash), transparent),
+    var(--deck);
+}
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+}
+.auth-brand {
+  text-align: center;
+  margin-bottom: 22px;
+}
+.auth-brand .brand-mark {
+  font-size: 30px;
+}
+.auth-brand .brand-sub {
+  margin-top: 6px;
+}
+
+/* ---- Misc ---------------------------------------------------------------- */
+.notice {
+  padding: 10px 13px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  border: 1px solid;
+}
+.notice-error {
+  background: var(--rope-wash);
+  border-color: #f0c3bc;
+  color: var(--rope-deep);
+}
+.notice-info {
+  background: var(--water-wash);
+  border-color: #b9dde0;
+  color: var(--water-deep);
+}
+
+.empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--ink-faint);
+}
+.muted {
+  color: var(--ink-faint);
+}
+.row-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.row-gap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.section-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+.spin {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--deck-line);
+  border-top-color: var(--water);
+  border-radius: 50%;
+  animation: rot 0.7s linear infinite;
+}
+@keyframes rot {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+.back-link:hover {
+  color: var(--water);
+}

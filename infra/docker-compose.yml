@@ -1,0 +1,61 @@
+# Full-stack bring-up: Postgres + the SwimLap API + the coordinator console.
+#
+#   cd infra && cp .env.example .env && docker compose up --build
+#
+# Then open:
+#   - console : http://localhost:5173   (sign in coordinator / swimlap-admin)
+#   - API docs: http://localhost:8000/docs
+#
+# The API image is built from the repo root so the Dockerfile can copy both
+# `backend/` and `shared/` (the domain layer reads shared/contracts/contract.json
+# at import time). Run all commands from this `infra/` directory.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-swimlap}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-swimlap}
+      POSTGRES_DB: ${POSTGRES_DB:-swimlap}
+    ports:
+      - "5432:5432"
+    volumes:
+      - swimlap_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-swimlap} -d ${POSTGRES_DB:-swimlap}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    environment:
+      SWIMLAP_ENVIRONMENT: ${SWIMLAP_ENVIRONMENT:-dev}
+      SWIMLAP_PERSISTENCE: sqlalchemy
+      SWIMLAP_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-swimlap}:${POSTGRES_PASSWORD:-swimlap}@db:5432/${POSTGRES_DB:-swimlap}
+      SWIMLAP_JWT_SECRET: ${SWIMLAP_JWT_SECRET:-change-me-in-prod-please}
+      SWIMLAP_JWT_TTL_MINUTES: ${SWIMLAP_JWT_TTL_MINUTES:-1440}
+      SWIMLAP_CORS_ALLOW_ORIGINS: ${SWIMLAP_CORS_ALLOW_ORIGINS:-["http://localhost:5173"]}
+      SWIMLAP_SEED_COORDINATOR_USERNAME: ${SWIMLAP_SEED_COORDINATOR_USERNAME:-coordinator}
+      SWIMLAP_SEED_COORDINATOR_PASSWORD: ${SWIMLAP_SEED_COORDINATOR_PASSWORD:-swimlap-admin}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ../admin-dashboard
+      dockerfile: Dockerfile
+      args:
+        # The browser (on the host) reaches the API on the host's mapped port.
+        VITE_API_BASE_URL: ${SWIMLAP_API_BASE_URL:-http://localhost:8000}
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
+
+volumes:
+  swimlap_pgdata:

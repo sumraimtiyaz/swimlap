@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SwimLap Shared Contract",
+  "version": "2.0.0",
+  "description": "Single source of truth for wire-level enums, error codes, and timing constants. Backend and both clients derive their local constants from this file so the whole system agrees on names and thresholds (DRY). See docs/ARCHITECTURE.md for the codegen story.",
+
+  "enums": {
+    "UserRole": ["coordinator", "timer"],
+    "SwimStatus": ["scheduled", "live", "closed"],
+    "ClosureMethod": ["timer_completed", "auto_inactivity", "coordinator"],
+    "LapSource": ["manual", "simulated"]
+  },
+
+  "errorCodes": {
+    "AUTH_INVALID_CREDENTIALS": "Login id or password is incorrect.",
+    "AUTH_TOKEN_EXPIRED": "Session expired; sign in again.",
+    "AUTH_LOCKED": "Too many failed attempts. Try again later.",
+    "AUTH_ACCOUNT_DISABLED": "This account has been deactivated. Contact your coordinator.",
+    "FORBIDDEN_ROLE": "Your role may not perform this action.",
+    "NOT_OWNER": "You do not have access to this record.",
+    "USER_NOT_FOUND": "User does not exist.",
+    "SWIM_NOT_FOUND": "Swim does not exist.",
+    "SWIM_NOT_LIVE": "Laps can only be recorded once a swim is live.",
+    "NOT_ASSIGNED": "You are not assigned to this swim.",
+    "OVERLAPPING_ASSIGNMENT": "This timer is already assigned to an overlapping swim.",
+    "LAP_INVALID_TIMING": "Lap rejected: timing values were not finite/plausible.",
+    "LAP_DUPLICATE_SEQ": "A lap with this sequence number already exists (ignored idempotently).",
+    "VALIDATION_ERROR": "Request payload failed validation.",
+    "ILLEGAL_STATE_TRANSITION": "That state change is not allowed."
+  },
+
+  "timing": {
+    "comment": "All thresholds live here so they can be tuned without touching code across three repos.",
+    "lapIngest": {
+      "lateGraceMs": 1500,
+      "maxLapsPerBatch": 500,
+      "minInterLapMs": 250
+    },
+    "swim": {
+      "autoInactivityTimeoutSeconds": 900,
+      "defaultLaneCount": 8,
+      "maxLaneCount": 12
+    },
+    "auth": {
+      "tokenTtlHours": 24,
+      "maxFailedAttempts": 5,
+      "lockoutMinutes": 15
+    },
+    "reference": {
+      "comment": "Simulated reference generator: base lap time + small random variation. failureRate marks a configurable share of references is_valid=false (exercises the no-reference path).",
+      "baseLapMs": 40000,
+      "variationMs": 1500,
+      "failureRate": 0.0
+    }
+  },
+
+  "clientTiming": {
+    "comment": "Client-only UX constants (mobile). Kept here so QA can tune without a rebuild story change.",
+    "confirmAutoAcceptMs": 10000,
+    "completionLongPressMs": 800
+  }
+}

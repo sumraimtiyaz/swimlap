@@ -1,0 +1,16 @@
+# Build-context excludes for the API image (build context = repo root).
+.git
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+backend/venv
+backend/.venv
+backend/*.egg-info
+backend/swimlap_backend.egg-info
+mobile
+admin-dashboard/node_modules
+admin-dashboard/dist
+**/.DS_Store
