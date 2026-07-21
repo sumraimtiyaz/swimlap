@@ -1,0 +1,42 @@
+# --- Python (backend) ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+*.db
+*.sqlite3
+
+# --- Node (admin-dashboard) ---
+node_modules/
+dist/
+.vite/
+*.local
+
+# --- Flutter (mobile) ---
+# Generated platform folders (recreate with `flutter create .`)
+mobile/android/
+mobile/ios/
+mobile/linux/
+mobile/macos/
+mobile/windows/
+mobile/web/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+.packages
+pubspec.lock
+
+# --- Env & secrets ---
+.env
+.env.*
+!.env.example
+
+# --- Editor / OS ---
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
