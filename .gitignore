@@ -1,21 +1,48 @@
-# --- Python (backend) ---
+# =====================================================================
+# Python (backend)
+# =====================================================================
 __pycache__/
 *.py[cod]
+*$py.class
 .venv/
 venv/
+env/
 *.egg-info/
+.eggs/
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
+.pytype/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.tox/
+.nox/
 *.db
 *.sqlite3
 
-# --- Node (admin-dashboard) ---
+# =====================================================================
+# Node / Vite / TypeScript (admin-dashboard)
+# =====================================================================
 node_modules/
 dist/
+dist-ssr/
 .vite/
 *.local
+*.tsbuildinfo
+.eslintcache
+.cache/
+coverage/
+.nyc_output/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-# --- Flutter (mobile) ---
+# =====================================================================
+# Flutter / Dart (mobile)
+# =====================================================================
 # Generated platform folders (recreate with `flutter create .`)
 mobile/android/
 mobile/ios/
@@ -30,13 +57,38 @@ build/
 .packages
 pubspec.lock
 
-# --- Env & secrets ---
+# =====================================================================
+# Env & secrets
+# =====================================================================
 .env
 .env.*
 !.env.example
+*.pem
+*.key
 
-# --- Editor / OS ---
+# =====================================================================
+# Logs & temp files
+# =====================================================================
+*.log
+logs/
+*.tmp
+*.bak
+*.pid
+*.seed
+
+# =====================================================================
+# Editor / IDE / OS
+# =====================================================================
 .idea/
 .vscode/
+*.swp
+*.swo
+*~
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
 Thumbs.db
+ehthumbs.db
+Desktop.ini
